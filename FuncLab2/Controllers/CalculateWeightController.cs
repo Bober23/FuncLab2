@@ -1,4 +1,5 @@
-﻿using FuncLab2.Requests;
+﻿using FuncLab2.DTO;
+using FuncLab2.Requests;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,16 +9,63 @@ namespace FuncLab2.Controllers
     [ApiController]
     public class CalculateWeightController : ControllerBase
     {
-        [HttpGet]
-        public async Task<IActionResult> CalculateWeight([FromQuery]double targetWeight, [FromQuery]double barbellWeight) 
+        List<Disk> baseDisks = new List<Disk>()
         {
-            if (targetWeight < barbellWeight)
+            new Disk(1),
+            new Disk(1),
+            new Disk(1),
+            new Disk(1),
+            new Disk(1),
+            new Disk(1),
+            new Disk(2),
+            new Disk(2),
+            new Disk(2),
+            new Disk(2),
+            new Disk(3),
+            new Disk(3),
+            new Disk(5),
+            new Disk(5),
+            new Disk(10),
+            new Disk(10),
+            new Disk(15),
+            new Disk(15),
+        };
+        [HttpGet]
+        public async Task<IActionResult> CalculateWeight([FromQuery]double targetWeight) 
+        {
+            Barbell barbell = new Barbell();
+            barbell.BarbellWeight = 20;
+            barbell.ZaklepkaWeight = 1.5;
+            double diskTargetWeight = targetWeight - (barbell.BarbellWeight + barbell.ZaklepkaWeight * 2);
+            if (diskTargetWeight<0)
             {
                 return BadRequest("Искомый вес не может быть меньше веса грифа");
             }
-            double diskWeight = (targetWeight - barbellWeight) / 2;
-            Console.WriteLine(diskWeight.ToString());
-            return Ok(diskWeight);
+            baseDisks.OrderBy(x => x.Weight);
+            while (barbell.LeftDisks.Sum(x => x.Weight) + barbell.RightDisks.Sum(x => x.Weight) < diskTargetWeight) 
+            {
+                double weightBeforeTarget = (diskTargetWeight - (barbell.LeftDisks.Sum(x => x.Weight) + barbell.RightDisks.Sum(x => x.Weight))) / 2;
+                Disk firstDisk = baseDisks.LastOrDefault(x => x.Weight <= weightBeforeTarget);
+                if (firstDisk == null)
+                {
+                    break;
+                }
+                baseDisks.Remove(firstDisk);
+                Disk secondDisk = baseDisks.LastOrDefault(x => x.Weight <= weightBeforeTarget);
+                if (secondDisk == null)
+                {
+                    break;
+                }
+                if (secondDisk.Weight == firstDisk.Weight)
+                {
+                    barbell.LeftDisks.Add(firstDisk);
+                    barbell.RightDisks.Add(secondDisk);
+                    baseDisks.Remove(secondDisk);
+                }
+
+            }
+            barbell.FullWeight = barbell.BarbellWeight + barbell.ZaklepkaWeight * 2 + barbell.LeftDisks.Sum(x => x.Weight) + barbell.RightDisks.Sum(x => x.Weight);
+            return Ok(barbell);
         }
     }
 }
