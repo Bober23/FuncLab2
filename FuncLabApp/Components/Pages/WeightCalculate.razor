@@ -1,0 +1,116 @@
+﻿@page "/calculate"
+@using FuncLab2.DTO
+@using FuncLab2.Requests
+
+<div style="display:block; padding:10px; height:100vh; overflow:scroll">
+    <h3>Расчет веса штанги</h3>
+    <MudTextField @bind-Value="@targetWeight" Label="Требуемый вес штанги" Error="@showError" ErrorText="Искомый вес не может быть меньше веса грифа с заглушками"></MudTextField>
+    <MudTextField @bind-Value="@barbellWeight" Label="Вес грифа"></MudTextField>
+    <MudTextField @bind-Value="@zaglushkaWeight" Label="Вес крепления"></MudTextField>
+    <MudExpansionPanels>
+        <MudExpansionPanel Text="Блины">
+            @for (int i = 0; i < diskCounts.Count; i++)
+            {
+                int index = i;
+                <div style="display:flex;">
+                    <MudTextField @bind-Value="@diskWeights[index]" Label="Вес диска" Variant="Variant.Outlined"></MudTextField>
+                    <MudNumericField @bind-Value="@diskCounts[index]" Label="Количество" Variant="Variant.Outlined" Min="1" Max="100" />
+                </div>
+            }
+            <div style="display:flex;">
+                <MudButton OnClick="@(()=>{diskCounts.Add(1); diskWeights.Add(1);})" style="margin-top:4px;margin-right:4px" Variant="Variant.Outlined">Добавить блин</MudButton>
+                <MudButton OnClick="SetDiscs" style="margin-top:4px" Variant="Variant.Outlined">Применить</MudButton>
+            </div>
+            
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+    @if (disks.Count < 2)
+    {
+        <MudButton OnClick="CalculateBarbell" style="margin-top:4px" Variant="Variant.Outlined">Расчитать c базовыми блинами</MudButton>
+    }
+    else
+    {
+        <MudButton OnClick="CalculateBarbell" style="margin-top:4px" Variant="Variant.Outlined">Расчитать c пользовательскими блинами</MudButton>
+    }
+    @if (barbell != null)
+    {
+        <h4>@($"Итоговый вес: {barbell.FullWeight}")</h4>
+        <div style="display:flex;">
+            <div style="display:block; margin:5px; padding:10px;border-radius:8px;background-color:lightgray; box-shadow:2px;">
+                <h5>Список блинов на левой части: </h5>
+                @foreach (var disc in barbell.LeftDisks)
+                {
+                    <p>@($"Блин {disc.Weight}кг")</p>
+                }
+            </div>
+            <MudDivider Vertical="true"></MudDivider>
+            <div style="display:block; margin:5px; padding:10px;border-radius:8px;background-color:lightgray; box-shadow:2px;">
+                <h5>Список блинов на правой части: </h5>
+                @foreach (var disc in barbell.RightDisks)
+                {
+                    <p>@($"Блин {disc.Weight}кг")</p>
+                }
+            </div>
+        </div>
+    }
+
+</div>
+@code {
+    List<double> diskWeights = new List<double>();
+    List<int> diskCounts = new List<int>();
+    private List<Disk> disks = new List<Disk>();
+    private HttpClient http;
+    private Barbell barbell;
+    private double targetWeight;
+    private double barbellWeight = 0;
+    private double zaglushkaWeight = 0;
+    private bool showError;
+    public void SetDiscs()
+    {
+        if (diskCounts.Count > 2 && diskCounts.Count == diskWeights.Count)
+        {
+            disks = new List<Disk>();
+            for (int i = 0; i < diskWeights.Count; i++)
+            {
+                for (int j = 0; j<diskCounts[i]; j++)
+                {
+                    disks.Add(new Disk(diskWeights[i]));
+                }
+            }
+        }
+    }
+    public async Task CalculateBarbell()
+    {
+        if (targetWeight <= 0)
+        {
+            return;
+        }
+        var request = new CalculateWeightRequest();
+        request.BarbellWeight = barbellWeight;
+        request.ZaglushkaWeight = zaglushkaWeight;
+        request.TargetWeight = targetWeight;
+        if (disks.Count >= 2)
+        {
+            request.disks = disks;
+        }
+        var responseMessage = await http.PostAsJsonAsync<CalculateWeightRequest>($"/CalculateWeight", request);
+        if (responseMessage.IsSuccessStatusCode)
+        {
+            barbell = (Barbell)await responseMessage.Content.ReadFromJsonAsync(typeof(Barbell));
+        }
+        if (barbell == null)
+        {
+            showError = true;
+        }
+        else
+        {
+            showError = false;
+        }
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        http = new HttpClient();
+        http.BaseAddress = new Uri("http://localhost:5205/");
+    }
+}

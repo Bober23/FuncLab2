@@ -1,0 +1,181 @@
+﻿@page "/exercises"
+@using FuncLab2.DTO
+@using FuncLab2.Requests
+
+<div style="display:flex">
+    <div style="display:flex; height:100vh">
+        <div style="border-right:1px solid #333; padding-left:10px; padding-right:10px; width:400px; overflow-y:scroll; padding-top:10px">
+            <h2 style="text-align:center">Упражнения</h2>
+
+            <MudButton Style="width:100%; margin-bottom:10px" OnClick="@AddNewExercise" Variant="Variant.Outlined">Добавить упражнение</MudButton>
+            <MudStack>
+                @if (exercises != null)
+                {
+                    @foreach (var exercise in exercises)
+                    {
+                        <MudPaper Style="padding:5px">
+                            <h3>@exercise.Name</h3>
+                            <h5>Группы мышц:</h5>
+                            @if (exercise.Muscles != null)
+                            {
+                                foreach (var muscle in exercise.Muscles)
+                                {
+                                    <label style="margin-left:5px">@("    " + muscle)</label>
+                                    <br />
+                                }
+                            }
+                            <div style="display:flex">
+                                <MudButton Variant="Variant.Outlined" OnClick="@(()=>SetChosedExercise(exercise))">Посмотреть</MudButton>
+                                <div style="flex:1"></div>
+                                <MudButton Variant="Variant.Outlined" OnClick="@(()=>SetChosedExerciseToUpdate(exercise))">Редактировать</MudButton>
+                            </div>
+                        </MudPaper>
+
+                    }
+                    <label style="visibility:hidden">Scroller</label>
+                }
+            </MudStack>
+        </div>
+    </div>
+    @if (newExercise != null)
+    {
+        <div style="display:block; padding:10px; width:-webkit-fill-available; height:100vh;overflow-y:scroll">
+            <h3>Название</h3>
+            <MudTextField Style="margin-bottom:5px" @bind-Value="@newExercise.Name" Variant="Variant.Outlined" Disabled="@disabledFields"></MudTextField>
+            <h3>Описание</h3>
+            <MudTextField Style="margin-bottom:5px" @bind-Value="@newExercise.Description" Variant="Variant.Outlined" AutoGrow="true" Disabled="@disabledFields"></MudTextField>
+            <h3>Тип</h3>
+            <MudTextField Style="margin-bottom:5px" @bind-Value="@newExercise.Type" Variant="Variant.Outlined" Disabled="@disabledFields"></MudTextField>
+            @if (newExercise.Muscles != null)
+            {
+                <h3>Задействованые группы мышц</h3>
+                @for (int i = 0; i < newExercise.Muscles.Count; i++)
+                {
+                    int index = i;
+                    <MudTextField Style="margin-bottom:5px" @bind-Value="@newExercise.Muscles[index]" Variant="Variant.Outlined" Disabled="@disabledFields" AdornmentIcon="Icons.Material.Filled.Clear" Adornment="Adornment.End" OnAdornmentClick="@(()=>chosedExercise.Muscles.Remove(chosedExercise.Muscles[index]))"></MudTextField>
+                }
+                @if (!disabledFields)
+                {
+                    <MudButton OnClick="@(()=>newExercise.Muscles.Add(string.Empty))">Добавить группу</MudButton>
+                }
+            }
+            <br />
+            <MudDivider></MudDivider>
+            <br />
+            @if (!disabledFields)
+            {
+                <MudButton OnClick="@AddCreatedExercise" Variant="Variant.Filled">Сохранить упражнение</MudButton>
+            }
+            <label style="visibility:hidden">Scroller</label>
+        </div>
+    }
+    else if (chosedExercise != null)
+    {
+        <div style="display:block; padding:10px; width:-webkit-fill-available; height:100vh;overflow-y:scroll">
+            <h3>Название</h3>
+            <MudTextField Style="margin-bottom:5px" @bind-Value="@chosedExercise.Name" Variant="Variant.Outlined" Disabled="@disabledFields"></MudTextField>
+            <h3>Описание</h3>
+            <MudTextField Style="margin-bottom:5px" @bind-Value="@chosedExercise.Description" Variant="Variant.Outlined" AutoGrow="true" Disabled="@disabledFields"></MudTextField>
+            <h3>Тип</h3>
+            <MudTextField Style="margin-bottom:5px" @bind-Value="@chosedExercise.Type" Variant="Variant.Outlined" Disabled="@disabledFields"></MudTextField>
+            @if (chosedExercise.Muscles != null)
+            {
+                <h3>Задействованые группы мышц</h3>
+                @for (int i = 0; i < chosedExercise.Muscles.Count; i++)
+                {
+                    int index = i;
+                    <MudTextField Style="margin-bottom:5px" @bind-Value="@chosedExercise.Muscles[index]" Variant="Variant.Outlined" Disabled="@disabledFields" AdornmentIcon="Icons.Material.Filled.Clear" Adornment="Adornment.End" OnAdornmentClick="@(()=>chosedExercise.Muscles.Remove(chosedExercise.Muscles[index]))"></MudTextField>
+                }
+                @if (!disabledFields)
+                {
+                    <MudButton OnClick="@(()=>chosedExercise.Muscles.Add(string.Empty))">Добавить группу</MudButton>
+                }
+            }
+            <br />
+            <MudDivider></MudDivider>
+            <br />
+            @if (!disabledFields)
+            {
+                <MudButton OnClick="@UpdateChosedExercise" Variant="Variant.Filled">Сохранить изменения</MudButton>
+                <MudButton OnClick="@DeleteChosedExercise" Variant="Variant.Filled">Удалить упражнение</MudButton>
+            }
+            <label style="visibility:hidden">Scroller</label>
+        </div>
+    }
+</div>
+@code {
+    private List<Exercise> exercises;
+    private bool disabledFields = true;
+    private Exercise newExercise;
+    private HttpClient http;
+    private Exercise chosedExercise;
+    public void AddNewExercise()
+    {
+        disabledFields = false;
+        chosedExercise = null;
+        newExercise = new Exercise();
+        newExercise.Muscles = new List<string>();
+    }
+    public void SetChosedExercise(Exercise exercise)
+    {
+        disabledFields = true;
+        newExercise = null;
+        chosedExercise = new Exercise();
+        string[] buffer = new string[exercise.Muscles.Count];
+        exercise.Muscles.CopyTo(buffer);
+        chosedExercise.Muscles = buffer.ToList();
+        chosedExercise.Description = exercise.Description;
+        chosedExercise.Id = exercise.Id;
+        chosedExercise.Name = exercise.Name;
+        chosedExercise.Type = exercise.Type;
+    }
+    public void SetChosedExerciseToUpdate(Exercise exercise)
+    {
+        disabledFields = false;
+        newExercise = null;
+        chosedExercise = new Exercise();
+        string[] buffer = new string[exercise.Muscles.Count];
+        exercise.Muscles.CopyTo(buffer);
+        chosedExercise.Muscles = buffer.ToList();
+        chosedExercise.Description = exercise.Description;
+        chosedExercise.Id = exercise.Id;
+        chosedExercise.Name = exercise.Name;
+        chosedExercise.Type = exercise.Type;
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        http = new HttpClient();
+        http.BaseAddress = new Uri("http://localhost:5205/");
+        exercises = await http.GetFromJsonAsync<List<Exercise>>("/Exercise");
+    }
+    public async Task UpdateChosedExercise()
+    {
+        var request = new ExerciseRequest();
+        request.Name = chosedExercise.Name;
+        request.Type = chosedExercise.Type;
+        request.Description = chosedExercise.Description;
+        request.Muscles = chosedExercise.Muscles;
+        await http.PutAsJsonAsync<ExerciseRequest>($"/Exercise/{chosedExercise.Id}", request);
+        Task.WaitAll();
+        exercises = await http.GetFromJsonAsync<List<Exercise>>("/Exercise");
+    }
+    public async Task AddCreatedExercise()
+    {
+        var request = new ExerciseRequest();
+        request.Name = newExercise.Name;
+        request.Type = newExercise.Type;
+        request.Description = newExercise.Description;
+        request.Muscles = newExercise.Muscles;
+        await http.PostAsJsonAsync<ExerciseRequest>($"/Exercise", request);
+        Task.WaitAll();
+        exercises = await http.GetFromJsonAsync<List<Exercise>>("/Exercise");
+    }
+    public async Task DeleteChosedExercise()
+    {
+        await http.DeleteAsync($"/Exercise/{chosedExercise.Id}");
+        Task.WaitAll();
+        exercises = await http.GetFromJsonAsync<List<Exercise>>("/Exercise");
+        chosedExercise = null;
+    }
+}

@@ -1,0 +1,101 @@
+﻿@using FuncLab2.DTO
+@using FuncLab2.Requests
+@inherits LayoutComponentBase
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<div class="page" style="height:100vh">
+    @if (registration)
+    {
+        <div style="width:260px; margin-left: auto; margin-right: auto;align-self:center; padding:10px; border:solid 1px; border-radius:8px; border-color:gray">
+            <h4>Регистрация</h4>
+            <MudTextField Variant="Variant.Outlined" Label="Логин" @bind-Value="@loginReg"></MudTextField>
+            <MudTextField Variant="Variant.Outlined" Error="@errorPass" Label="Пароль" @bind-Value="@passwordReg"></MudTextField>
+            <MudTextField Variant="Variant.Outlined" Error="@errorPass" Label="Повторите пароль" @bind-Value="@password2Reg"></MudTextField>
+            <div>
+                <MudButton OnClick="@Register" Style="margin-top:5px">Создать аккаунт</MudButton>
+            </div>
+
+        </div>
+    }
+    else if (User == null)
+    {
+        <div style="width:260px; margin-left: auto; margin-right: auto;align-self:center; padding:10px; border:solid 1px; border-radius:8px; border-color:gray">
+            <h4>Вход в аккаунт</h4>
+            <MudTextField Variant="Variant.Outlined" Error="@error" Label="Логин" @bind-Value="@login"></MudTextField>
+            <MudTextField Variant="Variant.Outlined" Error="@error" Label="Пароль" @bind-Value="@password"></MudTextField>
+            <div>
+                <MudButton OnClick="@TryLogin" Style="margin-top:5px">Войти</MudButton>
+                <MudButton OnClick="@(()=>registration = true)" Style="margin-top:5px">Регистрация</MudButton>
+            </div>
+            
+        </div>
+    }
+    else
+    {
+        <div class="sidebar">
+            <div class="top-row" style="background-color:transparent; justify-content:start">
+                <div style="display:flex">
+                    <h4 style="color:white; margin-bottom:4px;margin-right:10px" href="">@User.Login</h4>
+                    <MudIconButton Icon="@Icons.Material.Filled.ExitToApp" Style="color:white; padding:0px" Color="Color.Surface" OnClick="@(()=>User = null)"></MudIconButton>
+                </div>
+            </div>
+            <NavMenu />
+        </div>
+        <main>
+            <CascadingValue Value="@User">
+                @Body
+            </CascadingValue>
+            
+        </main>
+    }
+</div>
+@code {
+    public User User { get; set; }
+    public string login;
+    public string password;
+    public string loginReg;
+    public string passwordReg;
+    public string password2Reg;
+    private HttpClient http;
+    private bool error;
+    private bool errorPass;
+    private bool registration;
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        http = new HttpClient();
+        http.BaseAddress = new Uri("http://localhost:5205/");
+    }
+    public async Task TryLogin()
+    {
+        var request = new PostUserRequest();
+        request.Login = login;
+        request.Password = password;
+        var responseMessage = await http.PostAsJsonAsync<PostUserRequest>("/Users", request);
+        if (responseMessage.IsSuccessStatusCode)
+        {
+            User = (User) await responseMessage.Content.ReadFromJsonAsync(typeof(User));
+        }
+        if (User == null)
+        {
+            error = true;
+        }
+    }
+    public async Task Register()
+    {
+        if (passwordReg == password2Reg)
+        {
+            var request = new PostUserRequest();
+            request.Login = loginReg;
+            request.Password = passwordReg;
+            var responseMessage = await http.PutAsJsonAsync<PostUserRequest>("/Users", request);
+            errorPass = false;
+            registration = false;
+        }
+        else
+        {
+            errorPass = true;
+        }
+    }
+}

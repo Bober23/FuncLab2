@@ -30,28 +30,37 @@ namespace FuncLab2.Controllers
             new Disk(15),
             new Disk(15),
         };
-        [HttpGet]
-        public async Task<IActionResult> CalculateWeight([FromQuery]double targetWeight) 
+        [HttpPost]
+        public async Task<IActionResult> CalculateWeight(CalculateWeightRequest request) 
         {
             Barbell barbell = new Barbell();
-            barbell.BarbellWeight = 20;
-            barbell.ZaklepkaWeight = 1.5;
-            double diskTargetWeight = targetWeight - (barbell.BarbellWeight + barbell.ZaklepkaWeight * 2);
+            barbell.BarbellWeight = request.BarbellWeight;
+            barbell.ZaglushkaWeight = request.ZaglushkaWeight;
+            double diskTargetWeight = request.TargetWeight - (barbell.BarbellWeight + barbell.ZaglushkaWeight * 2);
             if (diskTargetWeight<0)
             {
                 return BadRequest("Искомый вес не может быть меньше веса грифа");
             }
-            baseDisks.OrderBy(x => x.Weight);
+            List<Disk> disks;
+            if (request.disks == null)
+            {
+                disks = baseDisks;
+            }
+            else
+            {
+                disks = request.disks;
+            }
+            disks.OrderBy(x => x.Weight);
             while (barbell.LeftDisks.Sum(x => x.Weight) + barbell.RightDisks.Sum(x => x.Weight) < diskTargetWeight) 
             {
                 double weightBeforeTarget = (diskTargetWeight - (barbell.LeftDisks.Sum(x => x.Weight) + barbell.RightDisks.Sum(x => x.Weight))) / 2;
-                Disk firstDisk = baseDisks.LastOrDefault(x => x.Weight <= weightBeforeTarget);
+                Disk firstDisk = disks.LastOrDefault(x => x.Weight <= weightBeforeTarget);
                 if (firstDisk == null)
                 {
                     break;
                 }
-                baseDisks.Remove(firstDisk);
-                Disk secondDisk = baseDisks.LastOrDefault(x => x.Weight <= weightBeforeTarget);
+                disks.Remove(firstDisk);
+                Disk secondDisk = disks.LastOrDefault(x => x.Weight <= weightBeforeTarget);
                 if (secondDisk == null)
                 {
                     break;
@@ -60,11 +69,11 @@ namespace FuncLab2.Controllers
                 {
                     barbell.LeftDisks.Add(firstDisk);
                     barbell.RightDisks.Add(secondDisk);
-                    baseDisks.Remove(secondDisk);
+                    disks.Remove(secondDisk);
                 }
 
             }
-            barbell.FullWeight = barbell.BarbellWeight + barbell.ZaklepkaWeight * 2 + barbell.LeftDisks.Sum(x => x.Weight) + barbell.RightDisks.Sum(x => x.Weight);
+            barbell.FullWeight = barbell.BarbellWeight + barbell.ZaglushkaWeight * 2 + barbell.LeftDisks.Sum(x => x.Weight) + barbell.RightDisks.Sum(x => x.Weight);
             return Ok(barbell);
         }
     }

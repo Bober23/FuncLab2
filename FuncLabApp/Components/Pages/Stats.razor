@@ -1,0 +1,85 @@
+﻿@page "/stats"
+@using FuncLab2.DTO
+@using FuncLab2.Requests
+@if (User.Trainings.Count > 1)
+{
+    @if (sumWeights != null && maxWeights != null && iterations != null)
+    {
+        <div style="display:flex;height:50vh">
+            <MudChart ChartType="ChartType.Line" ChartSeries="new List<ChartSeries>(){iterationChart}" Width="100%" ChartOptions="iterationChartOptions" />
+            <MudChart ChartType="ChartType.Line" ChartSeries="new List<ChartSeries>(){maxWeightsChart}" InputData=maxWeights Width="100%" ChartOptions="maxWeightsChartOptions" />
+            <MudChart ChartType="ChartType.Line" ChartSeries="new List<ChartSeries>(){sumWeightsChart}" InputData=sumWeights Width="100%" ChartOptions="sumWeightsChartOptions" />
+        </div>
+        <MudDivider></MudDivider>
+        <div style="display:block; margin:8px;">
+            <h3>Изменения по сравнению с прошлой тренировкой:</h3>
+
+            <h4>@($"Изменение максимального веса: {maxWeights[maxWeights.Length - 1]}кг - {maxWeights[maxWeights.Length - 2]}кг = {maxWeights[maxWeights.Length - 1] - maxWeights[maxWeights.Length - 2]}кг (Изменение {Math.Round(((maxWeights[maxWeights.Length - 1] - maxWeights[maxWeights.Length - 2]) / maxWeights[maxWeights.Length - 2]) * 100,2)}%)")</h4>
+            <h4>@($"Изменение числа подходов: {iterations[iterations.Length - 1]} - {iterations[iterations.Length - 2]} = {iterations[iterations.Length - 1] - iterations[iterations.Length - 2]} (Изменение {Math.Round(((iterations[iterations.Length - 1] - iterations[iterations.Length - 2]) / iterations[iterations.Length - 2]) * 100,2)}%)")</h4>
+            <h4>@($"Изменение суммарного веса: {sumWeights[sumWeights.Length - 1]}кг - {sumWeights[sumWeights.Length - 2]}кг = {sumWeights[sumWeights.Length - 1] - sumWeights[sumWeights.Length - 2]}кг (Изменение {Math.Round(((sumWeights[sumWeights.Length - 1] - sumWeights[sumWeights.Length - 2]) / sumWeights[sumWeights.Length - 2]) * 100,2)}%)")</h4>
+
+        </div>
+    }
+    else
+    {
+        <h3>Тренировки без подходов мешают отображению статистики</h3>
+    }
+}
+else
+{
+    <h3>Смлишком мало тренировок для статистики</h3>
+}
+@code {
+    [CascadingParameter]
+    public User User { get; set; }
+    private HttpClient http;
+    private double[] iterations;
+    private double[] maxWeights;
+    private double[] sumWeights;
+    ChartSeries iterationChart;
+    ChartSeries maxWeightsChart;
+    ChartSeries sumWeightsChart;
+    ChartOptions iterationChartOptions = new ChartOptions();
+    ChartOptions maxWeightsChartOptions = new ChartOptions();
+    ChartOptions sumWeightsChartOptions = new ChartOptions();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        http = new HttpClient();
+        http.BaseAddress = new Uri("http://localhost:5205/");
+        try
+        {
+            iterations = new double[User.Trainings.Count];
+            for (int i = 0; i < User.Trainings.Count; i++)
+            {
+                iterations[i] = User.Trainings[i].Weights.Count;
+            }
+            maxWeights = new double[User.Trainings.Count];
+            for (int i = 0; i < User.Trainings.Count; i++)
+            {
+                maxWeights[i] = User.Trainings[i].Weights.Max();
+            }
+            sumWeights = new double[User.Trainings.Count];
+            for (int i = 0; i < User.Trainings.Count; i++)
+            {
+                sumWeights[i] = User.Trainings[i].Weights.Sum();
+            }
+            if (sumWeights != null && maxWeights != null && iterations != null)
+            {
+                iterationChartOptions.YAxisTicks = (int)(iterations.Max() / 10) + 1;
+                iterationChart = new ChartSeries() { Name = "Количество подходов", Data = iterations };
+                maxWeightsChartOptions.YAxisTicks = (int)(maxWeights.Max() / 10) + 1;
+                maxWeightsChart = new ChartSeries() { Name = "Максимальный вес", Data = maxWeights };
+                sumWeightsChartOptions.YAxisTicks = (int)(sumWeights.Max() / 10) + 1;
+                sumWeightsChart = new ChartSeries() { Name = "Суммарный вес", Data = sumWeights };
+            }
+        }
+        catch
+        {
+            
+        }
+        
+        
+    }
+}

@@ -1,0 +1,171 @@
+﻿@page "/"
+@using FuncLab2.DTO
+@using FuncLab2.Requests
+<div style="display:flex">
+    <div style="display:flex; height:100vh">
+        <div style="border-right:1px solid #333; padding-left:10px; padding-right:10px; width:400px; overflow-y:scroll; padding-top:10px">
+            <h2 style="text-align:center">Мои тренировки</h2>
+
+            <MudButton Style="width:100%; margin-bottom:10px" OnClick="@AddNewTraining" Variant="Variant.Outlined">Добавить тренировку</MudButton>
+            <MudStack>
+                @if (User.Trainings != null)
+                {
+                    @foreach (var training in User.Trainings)
+                    {
+                        <MudPaper Style="padding:5px">
+                            <h3>@("Дата: "+training.DateTime.ToShortDateString())</h3>
+                            <h3>@("Время: " + training.DateTime.ToShortTimeString())</h3>
+                            <h3>@("Вес: "+training.Weights.Sum())</h3>
+                            <div style="display:flex">
+                                <MudButton Variant="Variant.Outlined" OnClick="@(()=>SetChosedTraining(training))">Посмотреть</MudButton>
+                                <div style="flex:1"></div>
+                                <MudButton Variant="Variant.Outlined" OnClick="@(()=>SetChosedTrainingToUpdate(training))">Редактировать</MudButton>
+                            </div>
+                        </MudPaper>
+
+                    }
+                    <label style="visibility:hidden">Scroller</label>
+                }
+            </MudStack>
+        </div>
+    </div>
+    @if (newTraining != null)
+    {
+        <div style="display:block; padding:10px; width:-webkit-fill-available; height:100vh;overflow-y:scroll">
+            <MudButton OnClick="@(()=>newTraining = User.Trainings.MaxBy(x=>x.DateTime))">Скопировать предыдущую тренировку</MudButton>
+            <h3>Описание</h3>
+            <MudTextField Style="margin-bottom:5px" @bind-Value="@newTraining.Description" Variant="Variant.Outlined" AutoGrow="true" Disabled="@disabledFields"></MudTextField>
+            @if (newTraining.Weights != null)
+            {
+                <h3>Подходы</h3>
+                @for (int i = 0; i < newTraining.Weights.Count; i++)
+                {
+                    int index = i;
+                    <MudTextField Style="margin-bottom:5px" Label="@($"Вес при подходе №{index}")" @bind-Value="@newTraining.Weights[index]" Variant="Variant.Outlined" Disabled="@disabledFields" AdornmentIcon="Icons.Material.Filled.Clear" Adornment="Adornment.End" OnAdornmentClick="@(()=>newTraining.Weights.Remove(newTraining.Weights[index]))"></MudTextField>
+                }
+                @if (!disabledFields)
+                {
+                    <MudButton OnClick="@(()=>newTraining.Weights.Add(0))">Добавить подход</MudButton>
+                }
+            }
+            <br />
+            <MudDivider></MudDivider>
+            <br />
+            @if (!disabledFields)
+            {
+                <MudButton OnClick="@AddCreatedTraining" Variant="Variant.Filled">Сохранить тренировку</MudButton>
+            }
+            <label style="visibility:hidden">Scroller</label>
+        </div>
+    }
+    else if (chosedTraining != null)
+    {
+        <div style="display:block; padding:10px; width:-webkit-fill-available; height:100vh;overflow-y:scroll">
+            <h3>Дата и время</h3>
+            <MudTextField Style="margin-bottom:5px" Value="@chosedTraining.DateTime" Variant="Variant.Outlined" Disabled="@true"></MudTextField>
+            <h3>Описание</h3>
+            <MudTextField Style="margin-bottom:5px" @bind-Value="@chosedTraining.Description" Variant="Variant.Outlined" AutoGrow="true" Disabled="@disabledFields"></MudTextField>
+            @if (chosedTraining.Weights != null)
+            {
+                <h3>Подходы</h3>
+                @for (int i = 0; i < chosedTraining.Weights.Count; i++)
+                {
+                    int index = i;
+                    <MudTextField Style="margin-bottom:5px" Label="@($"Вес при подходе №{index}")" @bind-Value="@chosedTraining.Weights[index]" Variant="Variant.Outlined" Disabled="@disabledFields" AdornmentIcon="Icons.Material.Filled.Clear" Adornment="Adornment.End" OnAdornmentClick="@(()=>chosedTraining.Weights.Remove(chosedTraining.Weights[index]))"></MudTextField>
+                }
+                @if (!disabledFields)
+                {
+                    <MudButton OnClick="@(()=>chosedTraining.Weights.Add(0))">Добавить подход</MudButton>
+                }
+            }
+            <br />
+            <MudDivider></MudDivider>
+            <br />
+            @if (!disabledFields)
+            {
+                <MudButton OnClick="@UpdateChosedTraining" Variant="Variant.Filled">Сохранить изменения</MudButton>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" OnClick="@DeleteChosedExercise" Variant="Variant.Filled">Удалить упражнение</MudIconButton>
+            }
+            <label style="visibility:hidden">Scroller</label>
+        </div>
+    }
+</div>
+@code {
+    [CascadingParameter]
+    public User User { get; set; }
+    private bool disabledFields = true;
+    private Training newTraining;
+    private HttpClient http;
+    private Training chosedTraining;
+    public void AddNewTraining()
+    {
+        disabledFields = false;
+        chosedTraining = null;
+        newTraining = new Training();
+        newTraining.Author = User;
+        newTraining.Weights = new List<double>();
+    }
+    public void SetChosedTraining(Training training)
+    {
+        disabledFields = true;
+        newTraining = null;
+        chosedTraining = new Training();
+        double[] buffer = new double[training.Weights.Count];
+        training.Weights.CopyTo(buffer);
+        chosedTraining.Weights = buffer.ToList();
+        chosedTraining.Description = training.Description;
+        chosedTraining.DateTime = training.DateTime;
+        chosedTraining.Id = training.Id;
+    }
+    public void SetChosedTrainingToUpdate(Training training)
+    {
+        disabledFields = false;
+        newTraining = null;
+        chosedTraining = new Training();
+        double[] buffer = new double[training.Weights.Count];
+        training.Weights.CopyTo(buffer);
+        chosedTraining.Weights = buffer.ToList();
+        chosedTraining.Description = training.Description;
+        chosedTraining.DateTime = training.DateTime;
+        chosedTraining.Id = training.Id;
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        http = new HttpClient();
+        http.BaseAddress = new Uri("http://localhost:5205/");
+    }
+    public async Task UpdateChosedTraining()
+    {
+        var request = new PostTrainingRequest();
+        request.Description = chosedTraining.Description;
+        request.Weights = chosedTraining.Weights;
+        if (request.Weights == null)
+        {
+            request.Weights = new List<double>();
+        }
+        await http.PutAsJsonAsync<PostTrainingRequest>($"/Training/{chosedTraining.Id}", request);
+        Task.WaitAll();
+        User.Trainings = await http.GetFromJsonAsync<List<Training>>($"/Training/{User.Id}");
+    }
+    public async Task AddCreatedTraining()
+    {
+        var request = new PostTrainingRequest();
+        request.Description = newTraining.Description;
+        request.Weights = newTraining.Weights;
+        if (request.Weights == null)
+        {
+            request.Weights = new List<double>();
+        }
+        await http.PostAsJsonAsync<PostTrainingRequest>($"/Training/{User.Id}", request);
+        Task.WaitAll();
+        User.Trainings = await http.GetFromJsonAsync<List<Training>>($"/Training/{User.Id}");
+    }
+    public async Task DeleteChosedExercise()
+    {
+        await http.DeleteAsync($"/Training/{chosedTraining.Id}");
+        Task.WaitAll();
+        User.Trainings = await http.GetFromJsonAsync<List<Training>>($"/Training/{User.Id}");
+        chosedTraining = null;
+    }
+}
