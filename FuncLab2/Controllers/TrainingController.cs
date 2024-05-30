@@ -29,6 +29,7 @@ namespace FuncLab2.Controllers
             var training = new Training();
             training.Weights = request.Weights;
             training.Author = user;
+            training.Exercise = request.Exercise;
             training.Description = request.Description;
             training.DateTime = DateTime.Now;
             _dataContext.Trainings.Add(training);
@@ -41,6 +42,7 @@ namespace FuncLab2.Controllers
         {
             var training = _dataContext.Trainings.FirstOrDefault(x=>x.Id == id);
             training.Weights = request.Weights;
+            training.Exercise = request.Exercise;
             training.Description = request.Description;
             _dataContext.Trainings.Update(training);
             await _dataContext.SaveChangesAsync();

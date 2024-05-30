@@ -15,6 +15,7 @@
                         <MudPaper Style="padding:5px">
                             <h3>@("Дата: "+training.DateTime.ToShortDateString())</h3>
                             <h3>@("Время: " + training.DateTime.ToShortTimeString())</h3>
+                            <h3>@($"Упражнение: {training.Exercise}")</h3>
                             <h3>@("Вес: "+training.Weights.Sum())</h3>
                             <div style="display:flex">
                                 <MudButton Variant="Variant.Outlined" OnClick="@(()=>SetChosedTraining(training))">Посмотреть</MudButton>
@@ -35,6 +36,15 @@
             <MudButton OnClick="@(()=>newTraining = User.Trainings.MaxBy(x=>x.DateTime))">Скопировать предыдущую тренировку</MudButton>
             <h3>Описание</h3>
             <MudTextField Style="margin-bottom:5px" @bind-Value="@newTraining.Description" Variant="Variant.Outlined" AutoGrow="true" Disabled="@disabledFields"></MudTextField>
+            <h3>Упражнение</h3>
+            <MudSelect T="string" @bind-Value="newTraining.Exercise" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                @for (int i = 0; i < exerciseNames.Count; i++)
+                {
+                    int index = i;
+                    <MudSelectItem T="string" Value="@exerciseNames[index]" />
+                }
+                
+            </MudSelect>
             @if (newTraining.Weights != null)
             {
                 <h3>Подходы</h3>
@@ -65,6 +75,15 @@
             <MudTextField Style="margin-bottom:5px" Value="@chosedTraining.DateTime" Variant="Variant.Outlined" Disabled="@true"></MudTextField>
             <h3>Описание</h3>
             <MudTextField Style="margin-bottom:5px" @bind-Value="@chosedTraining.Description" Variant="Variant.Outlined" AutoGrow="true" Disabled="@disabledFields"></MudTextField>
+            <h3>Упражнение</h3>
+            <MudSelect T="string" @bind-Value="chosedTraining.Exercise" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                @for (int i = 0; i < exerciseNames.Count; i++)
+                {
+                    int index = i;
+                    <MudSelectItem T="string" Value="@exerciseNames[index]" />
+                }
+
+            </MudSelect>
             @if (chosedTraining.Weights != null)
             {
                 <h3>Подходы</h3>
@@ -93,6 +112,7 @@
 @code {
     [CascadingParameter]
     public User User { get; set; }
+    public List<string> exerciseNames;
     private bool disabledFields = true;
     private Training newTraining;
     private HttpClient http;
@@ -113,6 +133,7 @@
         double[] buffer = new double[training.Weights.Count];
         training.Weights.CopyTo(buffer);
         chosedTraining.Weights = buffer.ToList();
+        chosedTraining.Exercise = training.Exercise;
         chosedTraining.Description = training.Description;
         chosedTraining.DateTime = training.DateTime;
         chosedTraining.Id = training.Id;
@@ -126,6 +147,7 @@
         training.Weights.CopyTo(buffer);
         chosedTraining.Weights = buffer.ToList();
         chosedTraining.Description = training.Description;
+        chosedTraining.Exercise = training.Exercise;
         chosedTraining.DateTime = training.DateTime;
         chosedTraining.Id = training.Id;
     }
@@ -134,6 +156,12 @@
         await base.OnInitializedAsync();
         http = new HttpClient();
         http.BaseAddress = new Uri("http://localhost:5205/");
+        var exercises = await http.GetFromJsonAsync<List<Exercise>>("/Exercise");
+        exerciseNames = new List<string>();
+        foreach (var exercise in exercises)
+        {
+            exerciseNames.Add(exercise.Name);
+        }
     }
     public async Task UpdateChosedTraining()
     {
@@ -144,6 +172,7 @@
         {
             request.Weights = new List<double>();
         }
+        request.Exercise = chosedTraining.Exercise;
         await http.PutAsJsonAsync<PostTrainingRequest>($"/Training/{chosedTraining.Id}", request);
         Task.WaitAll();
         User.Trainings = await http.GetFromJsonAsync<List<Training>>($"/Training/{User.Id}");
@@ -157,6 +186,7 @@
         {
             request.Weights = new List<double>();
         }
+        request.Exercise = newTraining.Exercise;
         await http.PostAsJsonAsync<PostTrainingRequest>($"/Training/{User.Id}", request);
         Task.WaitAll();
         User.Trainings = await http.GetFromJsonAsync<List<Training>>($"/Training/{User.Id}");
